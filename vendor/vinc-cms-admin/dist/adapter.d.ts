@@ -15,6 +15,12 @@ export interface CmsAdminLinks {
     pageBuilder: (pageSlug: string) => string;
     homeBuilder: string;
     dashboard: string;
+    /** URL for the blog-post builder for one post + content locale. Replaces CS
+     *  BlogListView's hard-coded `/{tenant}/b2b/blog-builder?post=…&locale=…&back=…`. */
+    blogBuilder: (postId: string, locale: string) => string;
+    /** URL of the blog posts list (BlogScreen mount) — the builder's back-link target.
+     *  Optional: BlogBuilderScreen falls back to `dashboard` when omitted. */
+    blogList?: string;
 }
 export interface CmsAdminAdapter {
     client: CmsAdminClient;
@@ -41,6 +47,13 @@ export interface CmsAdminAdapter {
     uploadFile?: (file: File) => Promise<{
         url: string;
         fileName?: string;
+    }>;
+    /** Content locales offered by the blog screens (create-post language picker,
+     *  taxonomy default language). Replaces CS's per-tenant `useLanguageStore`; the
+     *  first entry is treated as the default. Defaults to `[{ code: 'it' }]`. */
+    locales?: Array<{
+        code: string;
+        name?: string;
     }>;
 }
 export declare function defaultT(key: string, params?: Record<string, string>): string;

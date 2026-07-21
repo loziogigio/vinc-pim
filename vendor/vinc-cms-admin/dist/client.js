@@ -99,6 +99,131 @@ class CmsAdminClient {
     async unpublishHomeVersion(version) {
         return this.request('POST', '/home-template/unpublish-version', { version });
     }
+    async listSubmissions(params) {
+        const query = new URLSearchParams();
+        if (params?.page !== undefined)
+            query.set('page', String(params.page));
+        if (params?.limit !== undefined)
+            query.set('limit', String(params.limit));
+        if (params?.form_type)
+            query.set('form_type', params.form_type);
+        if (params?.ip)
+            query.set('ip', params.ip);
+        const qs = query.toString();
+        const envelope = await this.request('GET', `/forms${qs ? `?${qs}` : ''}`);
+        return envelope.data;
+    }
+    async getSubmission(id) {
+        const envelope = await this.request('GET', `/forms/${id}`);
+        return envelope.data;
+    }
+    async setSubmissionSeen(id, seen) {
+        const envelope = await this.request('PATCH', `/forms/${id}`, { seen });
+        return envelope.data;
+    }
+    async deleteSubmission(id) {
+        await this.request('DELETE', `/forms/${id}`);
+    }
+    async listFormDefinitions(params) {
+        const query = new URLSearchParams();
+        if (params?.page !== undefined)
+            query.set('page', String(params.page));
+        if (params?.limit !== undefined)
+            query.set('limit', String(params.limit));
+        const qs = query.toString();
+        const envelope = await this.request('GET', `/form-definitions${qs ? `?${qs}` : ''}`);
+        return envelope.data;
+    }
+    async createFormDefinition(input) {
+        const envelope = await this.request('POST', '/form-definitions', input);
+        return envelope.data;
+    }
+    async updateFormDefinition(slug, input) {
+        const envelope = await this.request('PUT', `/form-definitions/${slug}`, input);
+        return envelope.data;
+    }
+    async deleteFormDefinition(slug) {
+        await this.request('DELETE', `/form-definitions/${slug}`);
+    }
+    // ========================================================================
+    // Blog — maps Task 5's storefront wrapper routes ({apiBase}/blog/...). The
+    // server forces the channel from the storefront slug, so these methods NEVER
+    // send a `channel`/`channels` param or body field.
+    // ========================================================================
+    async listBlogPosts(params) {
+        const query = new URLSearchParams();
+        if (params?.locale)
+            query.set('locale', params.locale);
+        if (params?.status)
+            query.set('status', params.status);
+        if (params?.category)
+            query.set('category', params.category);
+        if (params?.tag)
+            query.set('tag', params.tag);
+        if (params?.q)
+            query.set('q', params.q);
+        if (params?.page !== undefined)
+            query.set('page', String(params.page));
+        if (params?.limit !== undefined)
+            query.set('limit', String(params.limit));
+        const qs = query.toString();
+        const envelope = await this.request('GET', `/blog/posts${qs ? `?${qs}` : ''}`);
+        return envelope.data;
+    }
+    async createBlogPost(input) {
+        const envelope = await this.request('POST', '/blog/posts', input);
+        return envelope.data;
+    }
+    async getBlogPost(postId) {
+        const envelope = await this.request('GET', `/blog/posts/${postId}`);
+        return envelope.data;
+    }
+    async updateBlogPost(postId, patch) {
+        const envelope = await this.request('PATCH', `/blog/posts/${postId}`, patch);
+        return envelope.data;
+    }
+    async deleteBlogPost(postId) {
+        await this.request('DELETE', `/blog/posts/${postId}`);
+    }
+    async getBlogContent(postId, locale) {
+        return this.request('GET', `/blog/posts/${postId}/content?locale=${encodeURIComponent(locale)}`);
+    }
+    async saveBlogDraft(postId, locale, payload) {
+        return this.request('POST', `/blog/posts/${postId}/content/save-draft?locale=${encodeURIComponent(locale)}`, payload);
+    }
+    async publishBlogContent(postId, locale, options) {
+        return this.request('POST', `/blog/posts/${postId}/content/publish?locale=${encodeURIComponent(locale)}`, options ?? {});
+    }
+    async listBlogCategories() {
+        const envelope = await this.request('GET', '/blog/categories');
+        return envelope.data.items;
+    }
+    async createBlogCategory(input) {
+        const envelope = await this.request('POST', '/blog/categories', input);
+        return envelope.data;
+    }
+    async updateBlogCategory(id, patch) {
+        const envelope = await this.request('PUT', `/blog/categories/${id}`, patch);
+        return envelope.data;
+    }
+    async deleteBlogCategory(id) {
+        await this.request('DELETE', `/blog/categories/${id}`);
+    }
+    async listBlogTags() {
+        const envelope = await this.request('GET', '/blog/tags');
+        return envelope.data.items;
+    }
+    async createBlogTag(input) {
+        const envelope = await this.request('POST', '/blog/tags', input);
+        return envelope.data;
+    }
+    async updateBlogTag(id, patch) {
+        const envelope = await this.request('PUT', `/blog/tags/${id}`, patch);
+        return envelope.data;
+    }
+    async deleteBlogTag(id) {
+        await this.request('DELETE', `/blog/tags/${id}`);
+    }
 }
 exports.CmsAdminClient = CmsAdminClient;
 //# sourceMappingURL=client.js.map

@@ -54,9 +54,9 @@ describe("integration: Blog Public API", () => {
     expect(data.data.blocks[0].type).toBe("content-rich-text");
   });
 
-  it("returns 400 without the tenant header and 404 for an unknown slug", async () => {
+  it("returns 401 without the tenant header or API key and 404 for an unknown slug", async () => {
     await seedPublished();
-    expect((await listPublic(makeReq("/api/public/blog/posts?channel=b2c"))).status).toBe(400);
+    expect((await listPublic(makeReq("/api/public/blog/posts?channel=b2c"))).status).toBe(401);
     const res404 = await getPublic(makeReq("/api/public/blog/posts/nope?channel=b2c&locale=en", TENANT_HEADER), createParams({ slug: "nope" }));
     expect(res404.status).toBe(404);
   });

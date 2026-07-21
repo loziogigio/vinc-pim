@@ -74,9 +74,10 @@ function makeDefaults() {
             }));
         },
         t: defaultT,
-        links: { pagesList: '#', pageBuilder: () => '#', homeBuilder: '#', dashboard: '#' },
+        links: { pagesList: '#', pageBuilder: () => '#', homeBuilder: '#', dashboard: '#', blogBuilder: () => '#', blogList: '#' },
         previewUrl: () => undefined,
         LinkComponent: DefaultLink,
+        locales: [{ code: 'it' }],
     };
 }
 const CmsAdminContext = (0, react_1.createContext)(null);

@@ -67,7 +67,22 @@ export async function assertSlugAvailable(
   }
 }
 
-export async function createBlogPost(tenantDb: string, input: CreateBlogPostInput): Promise<IBlogPost> {
+/**
+ * Options that let a storefront-verified wrapper route bypass channel validation.
+ *
+ * `skipChannelValidation` is ONLY for wrappers whose channel tag is a verified
+ * storefront slug (already checked to exist) rather than a SalesChannel code —
+ * never pass it from a route that accepts client-supplied channels.
+ */
+export interface BlogPostWriteOptions {
+  skipChannelValidation?: boolean;
+}
+
+export async function createBlogPost(
+  tenantDb: string,
+  input: CreateBlogPostInput,
+  opts?: BlogPostWriteOptions,
+): Promise<IBlogPost> {
   const { BlogPost, BlogPostVersion } = await connectWithModels(tenantDb);
   const [allowedCodes, defaultLocale] = await Promise.all([
     getTenantLanguageCodes(tenantDb),
@@ -79,7 +94,7 @@ export async function createBlogPost(tenantDb: string, input: CreateBlogPostInpu
   const slug = blogSlugify(input.slug || input.title);
   if (!slug) throw httpError("A valid slug or title is required", 400);
   await assertSlugAvailable(tenantDb, slug);
-  await assertChannelsValid(tenantDb, input.channels);
+  if (!opts?.skipChannelValidation) await assertChannelsValid(tenantDb, input.channels);
 
   const postId = `bp_${nanoid(10)}`;
   const now = new Date().toISOString();
@@ -163,6 +178,7 @@ export async function updateBlogPost(
   tenantDb: string,
   postId: string,
   patch: UpdateBlogPostInput,
+  opts?: BlogPostWriteOptions,
 ): Promise<IBlogPost> {
   const { BlogPost, BlogPostVersion } = await connectWithModels(tenantDb);
   const post: any = await BlogPost.findOne({ post_id: postId });
@@ -177,7 +193,7 @@ export async function updateBlogPost(
     }
   }
   if (patch.channels !== undefined) {
-    await assertChannelsValid(tenantDb, patch.channels);
+    if (!opts?.skipChannelValidation) await assertChannelsValid(tenantDb, patch.channels);
     post.channels = patch.channels;
   }
   if (patch.category_ids !== undefined) post.category_ids = patch.category_ids;
