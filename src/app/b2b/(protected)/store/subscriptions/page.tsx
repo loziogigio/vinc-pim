@@ -64,10 +64,16 @@ export default function SubscriptionPlansPage() {
   }
 
   function priceLabel(plan: ISubscriptionPlan): string {
-    const opt = plan.billing_options?.[0];
-    if (!opt) return "—";
-    const per = opt.interval === "year" ? "/yr" : "/mo";
-    return `${plan.currency} ${opt.base_price}${per}`;
+    if (!plan.billing_options?.length) return "—";
+    return plan.billing_options
+      .map((opt) => {
+        const per =
+          opt.interval === "year"
+            ? t("pages.store.subscriptions.perYear")
+            : t("pages.store.subscriptions.perMonth");
+        return `${plan.currency} ${opt.base_price}${per}`;
+      })
+      .join(" · ");
   }
 
   function metricLabel(plan: ISubscriptionPlan): string {

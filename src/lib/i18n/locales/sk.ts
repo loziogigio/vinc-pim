@@ -2517,6 +2517,8 @@ const sk = {
       subscriptions: {
         title: "Predplatné plány",
         subtitle: "Definujte cenové úrovne, zahrnuté limity a prekročenia",
+        perMonth: "/mes.",
+        perYear: "/rok",
         totalSuffix: "celkom",
         newPlan: "Nový plán",
         searchPlaceholder: "Hľadať podľa kódu...",

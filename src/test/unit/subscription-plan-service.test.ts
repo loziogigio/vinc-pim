@@ -113,4 +113,131 @@ describe("unit: subscription-plan.service", () => {
     expect(after.success).toBe(false);
     expect(after.status).toBe(404);
   });
+
+  it("deleting a missing plan returns 404", async () => {
+    const res = await deleteSubscriptionPlan(TENANT_DB, "plan_doesnotexist");
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(404);
+  });
+
+  // ── enum validation: reject at the service boundary with 400, never let
+  //    Mongoose throw into the route's catch-all (which would emit a 500)
+  it.each([
+    ["kind", { kind: "bogus" }],
+    ["checkout_mode", { checkout_mode: "bogus" }],
+    ["status", { status: "bogus" }],
+  ])("create rejects an invalid %s with 400", async (_field, patch) => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      ...patch,
+    } as unknown as Parameters<typeof createSubscriptionPlan>[1]);
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("create rejects an invalid metric aggregation with 400", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      metrics: [{ metric_key: "invoices", included_quantity: 10, overage_unit_price: 1, aggregation: "bogus" }],
+    } as unknown as Parameters<typeof createSubscriptionPlan>[1]);
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("update rejects an invalid enum with 400", async () => {
+    const created = await createSubscriptionPlan(TENANT_DB, validPlan());
+    const res = await updateSubscriptionPlan(
+      TENANT_DB,
+      created.data!.plan_id,
+      { kind: "bogus" } as unknown as Parameters<typeof updateSubscriptionPlan>[2]
+    );
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  // ── update must mirror create's required-field guards
+  it("update rejects blanking the code with 400", async () => {
+    const created = await createSubscriptionPlan(TENANT_DB, validPlan());
+    const res = await updateSubscriptionPlan(TENANT_DB, created.data!.plan_id, { code: "" });
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("update rejects nulling the name with 400", async () => {
+    const created = await createSubscriptionPlan(TENANT_DB, validPlan());
+    const res = await updateSubscriptionPlan(
+      TENANT_DB,
+      created.data!.plan_id,
+      { name: null } as unknown as Parameters<typeof updateSubscriptionPlan>[2]
+    );
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  // ── duplicate collapsing
+  it("rejects duplicate metric_key within a plan", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      metrics: [
+        { metric_key: "invoices", included_quantity: 1000, overage_unit_price: 0.13, aggregation: "sum" as const },
+        { metric_key: "invoices", included_quantity: 5000, overage_unit_price: 0.08, aggregation: "sum" as const },
+      ],
+    });
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects two billing options with the same interval and count", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      billing_options: [
+        { interval: "month" as const, interval_count: 1, base_price: 99 },
+        { interval: "month" as const, interval_count: 1, base_price: 79 },
+      ],
+    });
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("allows monthly and quarterly (same interval, different count)", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      billing_options: [
+        { interval: "month" as const, interval_count: 1, base_price: 99 },
+        { interval: "month" as const, interval_count: 3, base_price: 270 },
+      ],
+    });
+    expect(res.success).toBe(true);
+    expect(res.data!.billing_options).toHaveLength(2);
+  });
+
+  // ── negative bounds
+  it("rejects a negative hard_cap", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      metrics: [
+        { metric_key: "invoices", included_quantity: 10, overage_unit_price: 1, hard_cap: -1, aggregation: "sum" as const },
+      ],
+    });
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects negative trial_days", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, { ...validPlan(), trial_days: -30 });
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it("still accepts a null hard_cap and null trial_days", async () => {
+    const res = await createSubscriptionPlan(TENANT_DB, {
+      ...validPlan(),
+      trial_days: null,
+      metrics: [
+        { metric_key: "invoices", included_quantity: 10, overage_unit_price: 1, hard_cap: null, aggregation: "sum" as const },
+      ],
+    });
+    expect(res.success).toBe(true);
+    expect(res.data!.metrics[0].hard_cap).toBeNull();
+  });
 });

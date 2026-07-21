@@ -2541,6 +2541,8 @@ const it = {
       subscriptions: {
         title: "Piani di abbonamento",
         subtitle: "Definisci fasce di prezzo, soglie incluse ed eccedenze",
+        perMonth: "/mese",
+        perYear: "/anno",
         totalSuffix: "totali",
         newPlan: "Nuovo piano",
         searchPlaceholder: "Cerca per codice...",

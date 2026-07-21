@@ -44,7 +44,6 @@ export interface IPlanMetric {
 export interface ISubscriptionPlan {
   /** Unique identifier: "plan_{nanoid(10)}" */
   plan_id: string;
-  tenant_id?: string;
   /** Sales-channel code (kebab-case). Default "default". */
   channel: string;
   /** Stable per-channel key, e.g. "basic" | "pro" | "scale". */
@@ -96,11 +95,9 @@ const SubscriptionPlanSchema = new Schema<ISubscriptionPlanDocument>(
     plan_id: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
+      unique: true, // unique implies an index — no separate index: true needed
       default: () => `plan_${nanoid(10)}`,
     },
-    tenant_id: { type: String, index: true },
     channel: { type: String, required: true, trim: true, lowercase: true, default: "default" },
     code: { type: String, required: true, trim: true, lowercase: true },
     name: { type: Schema.Types.Mixed, required: true },

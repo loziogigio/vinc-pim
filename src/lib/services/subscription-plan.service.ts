@@ -7,7 +7,13 @@
 
 import { connectWithModels } from "@/lib/db/connection";
 import { isValidChannelCode } from "@/lib/constants/channel";
-import { isBillingInterval } from "@/lib/constants/subscription";
+import {
+  isBillingInterval,
+  isMetricAggregation,
+  isPlanKind,
+  isCheckoutMode,
+  isPlanStatus,
+} from "@/lib/constants/subscription";
 import type {
   CreatePlanRequest,
   UpdatePlanRequest,
@@ -23,6 +29,7 @@ function validatePricing(
   if (!Array.isArray(billingOptions) || billingOptions.length === 0) {
     return { ok: false, error: "At least one billing option is required" };
   }
+  const seenIntervals = new Set<string>();
   for (const opt of billingOptions) {
     if (!isBillingInterval(opt.interval)) {
       return { ok: false, error: `Invalid billing interval: ${opt.interval}` };
@@ -30,17 +37,57 @@ function validatePricing(
     if (typeof opt.base_price !== "number" || opt.base_price < 0) {
       return { ok: false, error: "base_price must be a non-negative number" };
     }
+    // One price per cadence: interval+count identifies the billing option
+    const cadence = `${opt.interval}x${opt.interval_count ?? 1}`;
+    if (seenIntervals.has(cadence)) {
+      return { ok: false, error: `Duplicate billing option for interval: ${opt.interval}` };
+    }
+    seenIntervals.add(cadence);
   }
+  const seenMetricKeys = new Set<string>();
   for (const m of metrics ?? []) {
     if (!m.metric_key || typeof m.metric_key !== "string") {
       return { ok: false, error: "Each metric requires a metric_key" };
     }
+    if (seenMetricKeys.has(m.metric_key)) {
+      return { ok: false, error: `Duplicate metric_key: ${m.metric_key}` };
+    }
+    seenMetricKeys.add(m.metric_key);
     if (typeof m.included_quantity !== "number" || m.included_quantity < 0) {
       return { ok: false, error: "included_quantity must be a non-negative number" };
     }
     if (typeof m.overage_unit_price !== "number" || m.overage_unit_price < 0) {
       return { ok: false, error: "overage_unit_price must be a non-negative number" };
     }
+    if (m.hard_cap != null && (typeof m.hard_cap !== "number" || m.hard_cap < 0)) {
+      return { ok: false, error: "hard_cap must be a non-negative number or null" };
+    }
+    if (m.aggregation !== undefined && !isMetricAggregation(m.aggregation)) {
+      return { ok: false, error: `Invalid metric aggregation: ${m.aggregation}` };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Validate the optional enum + bound fields shared by create and update.
+ * Rejecting here keeps invalid input a clean 400 instead of a Mongoose
+ * ValidationError surfacing as a 500 from the route's catch-all.
+ */
+function validatePlanOptions(
+  data: Pick<UpdatePlanRequest, "kind" | "checkout_mode" | "status" | "trial_days">
+): { ok: true } | { ok: false; error: string } {
+  if (data.kind !== undefined && !isPlanKind(data.kind)) {
+    return { ok: false, error: `Invalid plan kind: ${data.kind}` };
+  }
+  if (data.checkout_mode !== undefined && !isCheckoutMode(data.checkout_mode)) {
+    return { ok: false, error: `Invalid checkout mode: ${data.checkout_mode}` };
+  }
+  if (data.status !== undefined && !isPlanStatus(data.status)) {
+    return { ok: false, error: `Invalid plan status: ${data.status}` };
+  }
+  if (data.trial_days != null && (typeof data.trial_days !== "number" || data.trial_days < 0)) {
+    return { ok: false, error: "trial_days must be a non-negative number or null" };
   }
   return { ok: true };
 }
@@ -66,6 +113,10 @@ export async function createSubscriptionPlan(
   const pricing = validatePricing(data.billing_options, data.metrics);
   if (!pricing.ok) {
     return { success: false, error: pricing.error, status: 400 };
+  }
+  const options = validatePlanOptions(data);
+  if (!options.ok) {
+    return { success: false, error: options.error, status: 400 };
   }
 
   const existing = await SubscriptionPlan.findOne({ channel, code }).lean();
@@ -130,11 +181,22 @@ export async function updateSubscriptionPlan(
     return { success: false, error: "Plan not found", status: 404 };
   }
 
-  // Resolve target channel/code for uniqueness + validation
+  // Mirror create's required-field guards: reject blanking rather than
+  // letting schema `required` fail on save() (which would surface as a 500)
   const nextChannel = (data.channel ?? plan.channel).trim().toLowerCase();
   const nextCode = (data.code ?? plan.code).trim().toLowerCase();
   if (data.channel !== undefined && !isValidChannelCode(nextChannel)) {
     return { success: false, error: "A valid channel code is required", status: 400 };
+  }
+  if (data.code !== undefined && !nextCode) {
+    return { success: false, error: "Plan code is required", status: 400 };
+  }
+  if ("name" in data && !data.name) {
+    return { success: false, error: "Plan name is required", status: 400 };
+  }
+  const options = validatePlanOptions(data);
+  if (!options.ok) {
+    return { success: false, error: options.error, status: 400 };
   }
   if (data.channel !== undefined || data.code !== undefined) {
     const clash = await SubscriptionPlan.findOne({
@@ -179,11 +241,10 @@ export async function deleteSubscriptionPlan(
   planId: string
 ): Promise<ServiceResult> {
   const { SubscriptionPlan } = await connectWithModels(tenantDb);
-  const plan = await SubscriptionPlan.findOne({ plan_id: planId }).lean();
-  if (!plan) {
+  const result = await SubscriptionPlan.deleteOne({ plan_id: planId });
+  if (result.deletedCount === 0) {
     return { success: false, error: "Plan not found", status: 404 };
   }
-  await SubscriptionPlan.deleteOne({ plan_id: planId });
   return { success: true };
 }
 

@@ -2544,6 +2544,8 @@ const en = {
       subscriptions: {
         title: "Subscription Plans",
         subtitle: "Define pricing tiers, allowances and overage",
+        perMonth: "/mo",
+        perYear: "/yr",
         totalSuffix: "total",
         newPlan: "New Plan",
         searchPlaceholder: "Search by code...",
