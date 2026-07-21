@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
 import { getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
+import { resolvePublicBlogTenant } from "@/lib/services/blog/public-tenant";
 
 /**
  * GET /api/public/blog/posts — list published posts for a channel + locale.
- * Tenant resolved via x-resolved-tenant-db header (no auth).
+ * Tenant resolved via x-resolved-tenant-db header (legacy proxy) or API key.
  */
 export async function GET(req: NextRequest) {
   try {
-    const tenantDb = req.headers.get("x-resolved-tenant-db");
-    if (!tenantDb) return NextResponse.json({ error: "Tenant not resolved" }, { status: 400 });
+    const resolved = await resolvePublicBlogTenant(req);
+    if ("response" in resolved) return resolved.response;
+    const { tenantDb } = resolved;
 
     const { searchParams } = new URL(req.url);
     const channel = searchParams.get("channel") || "default";
