@@ -3,9 +3,9 @@
  *
  * POST /api/public/payments/complete
  *
- * Called by the /pay/complete page after PayPal redirects the customer back.
- * No authentication required — the PayPal order token is the proof.
- * Finds the transaction by provider_payment_id and captures it.
+ * Called by the /pay/complete page after the gateway redirects the customer back.
+ * PayPal: captures the order (the PayPal order token is the proof).
+ * Axerve/GestPay: reports the status written by the server-to-server callback.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +17,7 @@ import { initializeProviders } from "@/lib/payments/providers/register-providers
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { provider_payment_id, tenant } = body;
+    const { provider_payment_id, tenant, provider } = body;
 
     if (!provider_payment_id || !tenant) {
       return NextResponse.json(
@@ -52,6 +52,20 @@ export async function POST(req: NextRequest) {
         { error: "Transaction not found" },
         { status: 404 }
       );
+    }
+
+    // Axerve/GestPay: the S2S callback is the source of truth — only report status.
+    if (provider === "axerve") {
+      return NextResponse.json({
+        success: transaction.status === "completed",
+        transaction_id: transaction.transaction_id,
+        status: transaction.status,
+        pending: transaction.status === "processing" || transaction.status === "pending",
+        error:
+          transaction.status === "failed"
+            ? transaction.failure_reason || "Payment failed"
+            : undefined,
+      });
     }
 
     // Already completed — return success

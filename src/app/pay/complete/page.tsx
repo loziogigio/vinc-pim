@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
-type Status = "loading" | "success" | "error" | "missing_params";
+type Status = "loading" | "success" | "error" | "pending" | "missing_params";
 
 export default function PaymentCompletePage() {
   return (
@@ -26,40 +26,72 @@ function PaymentCompleteContent() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const token = searchParams.get("token"); // PayPal order ID
     const tenant = searchParams.get("tenant");
+    const provider = searchParams.get("provider");
+    // PayPal returns ?token=<order id>; GestPay returns ?a=<shopLogin>&b=<crypted>
+    // and we pass the payment reference through as ?ref=.
+    const token = searchParams.get("token");
+    const axerveRef = searchParams.get("ref");
+    const providerPaymentId = provider === "axerve" ? axerveRef : token;
 
-    if (!token || !tenant) {
+    if (!providerPaymentId || !tenant) {
       setStatus("missing_params");
       return;
     }
 
-    async function completePayment() {
-      try {
-        const res = await fetch("/api/public/payments/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider_payment_id: token,
-            tenant,
-          }),
-        });
+    let cancelled = false;
 
-        const data = await res.json();
+    async function resolvePayment() {
+      // Axerve: the S2S callback may still be in flight — poll briefly.
+      const maxAttempts = provider === "axerve" ? 10 : 1;
 
-        if (data.success) {
-          setStatus("success");
-        } else {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (cancelled) return;
+
+        try {
+          const res = await fetch("/api/public/payments/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider_payment_id: providerPaymentId,
+              tenant,
+              provider,
+            }),
+          });
+
+          const data = await res.json();
+          if (cancelled) return;
+
+          if (data.success) {
+            setStatus("success");
+            return;
+          }
+
+          if (!data.pending) {
+            setStatus("error");
+            setErrorMessage(data.error || "Il pagamento non è andato a buon fine.");
+            return;
+          }
+        } catch {
+          if (cancelled) return;
           setStatus("error");
-          setErrorMessage(data.error || "Il pagamento non è andato a buon fine.");
+          setErrorMessage("Errore di connessione. Riprova più tardi.");
+          return;
         }
-      } catch {
-        setStatus("error");
-        setErrorMessage("Errore di connessione. Riprova più tardi.");
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+
+      if (!cancelled) {
+        setStatus("pending");
       }
     }
 
-    completePayment();
+    resolvePayment();
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   return (
@@ -109,6 +141,19 @@ function PaymentCompleteContent() {
             </p>
             <p className="text-xs text-gray-400 mt-4">
               Se il problema persiste, contatta il venditore.
+            </p>
+          </div>
+        )}
+
+        {status === "pending" && (
+          <div className="space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
+            <h1 className="text-xl font-semibold text-gray-800">
+              Pagamento in elaborazione
+            </h1>
+            <p className="text-sm text-gray-500">
+              Stiamo attendendo la conferma dalla banca. Riceverai un&apos;email
+              appena il pagamento sarà confermato.
             </p>
           </div>
         )}
