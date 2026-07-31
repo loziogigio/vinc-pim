@@ -1,16 +1,17 @@
 /**
- * Axerve / Fabrick Webhook Handler
+ * Axerve / GestPay Webhook + Callback Handler
+ *
+ * GET  /api/public/payments/webhooks/axerve?tenant={tenantId}&a={shopLogin}&b={cryptedString}
+ *      The GestPay server-to-server response URL. Authentication is decryption of `b`.
  *
  * POST /api/public/payments/webhooks/axerve?tenant={tenantId}
+ *      Reserved for signature-header notifications.
  *
- * Public endpoint — no auth required.
- * Verification: signature checked against tenant's api_key from MongoDB.
- *
- * The ?tenant= parameter is REQUIRED — webhooks without it are rejected.
+ * Public endpoints — no auth required. The ?tenant= parameter is REQUIRED.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { processWebhook } from "@/lib/payments/webhook.service";
+import { processWebhook, processAxerveCallback } from "@/lib/payments/webhook.service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,5 +45,39 @@ export async function POST(req: NextRequest) {
       { error: "Webhook processing failed" },
       { status: 500 }
     );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const tenantId = req.nextUrl.searchParams.get("tenant");
+    const shopLogin = req.nextUrl.searchParams.get("a");
+    const cryptedString = req.nextUrl.searchParams.get("b");
+
+    if (!tenantId) {
+      return NextResponse.json({ error: "Missing tenant parameter" }, { status: 400 });
+    }
+    if (!shopLogin || !cryptedString) {
+      return NextResponse.json(
+        { error: "Missing callback parameters" },
+        { status: 400 }
+      );
+    }
+
+    const result = await processAxerveCallback(tenantId, shopLogin, cryptedString);
+
+    if (!result.success) {
+      // Never log `b` or credentials — the reason is enough.
+      console.warn(`Axerve callback rejected for tenant ${tenantId}: ${result.error}`);
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      received: true,
+      event_id: result.event_id,
+    });
+  } catch (error) {
+    console.error("Axerve callback error:", error);
+    return NextResponse.json({ error: "Callback processing failed" }, { status: 500 });
   }
 }
