@@ -16,6 +16,7 @@ import { getPooledConnection } from "@/lib/db/connection";
 import { getProviderConfig } from "./payment.service";
 import { getProvider } from "./providers/provider-registry";
 import { initializeProviders } from "./providers/register-providers";
+import { decryptCallback } from "./providers/axerve/client";
 import type { WebhookEvent } from "@/lib/types/payment";
 
 export interface WebhookProcessResult {
@@ -107,6 +108,99 @@ export async function processWebhook(
   } catch (error) {
     // Log but don't fail — the event was verified successfully
     console.error(`Failed to enqueue webhook job for ${providerName}:`, error);
+  }
+
+  return {
+    success: true,
+    event_id: event.event_id,
+    event_type: event.event_type,
+  };
+}
+
+// ============================================
+// AXERVE / GESTPAY SERVER-TO-SERVER CALLBACK
+// ============================================
+
+/**
+ * Process a GestPay/Axerve server-to-server callback.
+ *
+ * GestPay sends GET ?a=<shopLogin>&b=<cryptedString> — there is no signature header.
+ * Authentication is decryption: only this merchant's credentials can decrypt `b`,
+ * so a successful Decrypt proves the callback is genuine.
+ */
+export async function processAxerveCallback(
+  tenantId: string,
+  shopLogin: string,
+  cryptedString: string
+): Promise<WebhookProcessResult> {
+  if (!tenantId) {
+    return { success: false, error: "Missing tenant parameter" };
+  }
+  if (!shopLogin || !cryptedString) {
+    return { success: false, error: "Missing callback parameters" };
+  }
+
+  const tenantDb = `vinc-${tenantId}`;
+  const connection = await getPooledConnection(tenantDb);
+  const tenantConfig = await getProviderConfig(connection, tenantId, "axerve");
+
+  if (!tenantConfig) {
+    return { success: false, error: `Provider axerve not configured for tenant ${tenantId}` };
+  }
+
+  // The callback must claim the shop we are configured for.
+  if (tenantConfig.shop_login !== shopLogin) {
+    return { success: false, error: "shopLogin does not match tenant configuration" };
+  }
+
+  // Decryption IS the authentication step.
+  let decrypted;
+  try {
+    decrypted = await decryptCallback(
+      {
+        shop_login: tenantConfig.shop_login as string,
+        api_key: tenantConfig.api_key as string,
+        environment: (tenantConfig.environment as "sandbox" | "production") || "sandbox",
+      },
+      cryptedString
+    );
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to decrypt callback: ${(error as Error).message}`,
+    };
+  }
+
+  if (decrypted.transaction_result !== "OK" && decrypted.transaction_result !== "KO") {
+    return { success: false, error: "Decrypted callback has no transaction result" };
+  }
+
+  initializeProviders();
+  const provider = getProvider("axerve");
+  if (!provider) {
+    return { success: false, error: "Unknown provider: axerve" };
+  }
+
+  const event = provider.parseWebhookEvent(JSON.stringify(decrypted));
+
+  try {
+    const { paymentQueue } = await import("@/lib/queue/queues");
+    await paymentQueue.add(
+      "payment.webhook",
+      {
+        provider: "axerve",
+        event,
+        tenant_id: tenantId,
+        received_at: new Date().toISOString(),
+      },
+      {
+        jobId: `webhook-axerve-${event.event_id}`,
+        removeOnComplete: { count: 1000 },
+      }
+    );
+  } catch (error) {
+    // Log but don't fail — the callback was authenticated successfully.
+    console.error("Failed to enqueue axerve callback job:", error);
   }
 
   return {
