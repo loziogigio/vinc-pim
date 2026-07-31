@@ -236,12 +236,14 @@ describe("unit: Axerve Provider", () => {
     expect(provider.supportsAutomaticSplit).toBe(false);
   });
 
-  it("should parse webhook events from XML/JSON payload", () => {
+  it("should parse webhook events from a decrypted callback payload", () => {
+    // GestPay never sends JSON — the payload is the AxerveDecryptedCallback
+    // that processAxerveCallback produces from the SOAP Decrypt response.
     const event = provider.parseWebhookEvent(
       JSON.stringify({
-        ShopLogin: "SHOP123",
-        BankTransactionID: "bt-456",
-        TransactionResult: "OK",
+        shop_transaction_id: "PA-1-2026",
+        bank_transaction_id: "bt-456",
+        transaction_result: "OK",
       })
     );
 

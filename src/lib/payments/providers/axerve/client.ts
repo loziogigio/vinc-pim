@@ -97,6 +97,63 @@ function extractXmlValue(xml: string, tag: string): string {
 }
 
 // ============================================
+// CALLBACK DECRYPTION
+// ============================================
+
+/**
+ * Fields GestPay returns in a decrypted server-to-server callback.
+ * Missing tags decrypt to "" (extractXmlValue's absent-tag behavior).
+ */
+export interface AxerveDecryptedCallback {
+  transaction_result: "OK" | "KO" | "";
+  shop_transaction_id: string;
+  bank_transaction_id: string;
+  authorization_code: string;
+  amount: string;
+  currency: string;
+  token: string;
+  error_code: string;
+  error_description: string;
+}
+
+/**
+ * Decrypt the `b` parameter GestPay appends to its callback URL.
+ *
+ * Only the merchant holding shop_login + api_key can decrypt it, so a successful
+ * decryption authenticates the callback — callers must treat a throw as "reject".
+ */
+export async function decryptCallback(
+  config: Pick<AxerveConfig, "shop_login" | "api_key" | "environment">,
+  cryptedString: string
+): Promise<AxerveDecryptedCallback> {
+  const bodyXml = `
+        <shopLogin>${config.shop_login}</shopLogin>
+        <CryptedString>${cryptedString}</CryptedString>
+        <apikey>${config.api_key}</apikey>`;
+
+  const response = await soapRequest(
+    getCryptUrl(config.environment),
+    "Decrypt",
+    bodyXml
+  );
+
+  const transactionResult = extractXmlValue(response, "TransactionResult");
+
+  return {
+    transaction_result:
+      transactionResult === "OK" || transactionResult === "KO" ? transactionResult : "",
+    shop_transaction_id: extractXmlValue(response, "ShopTransactionID"),
+    bank_transaction_id: extractXmlValue(response, "BankTransactionID"),
+    authorization_code: extractXmlValue(response, "AuthorizationCode"),
+    amount: extractXmlValue(response, "Amount"),
+    currency: extractXmlValue(response, "Currency"),
+    token: extractXmlValue(response, "TOKEN"),
+    error_code: extractXmlValue(response, "ErrorCode"),
+    error_description: extractXmlValue(response, "ErrorDescription"),
+  };
+}
+
+// ============================================
 // PROVIDER IMPLEMENTATION
 // ============================================
 
@@ -119,11 +176,16 @@ export const axerveProvider: IPaymentProvider = {
     const config = tenantConfig as AxerveConfig;
 
     try {
+      // One shopTransactionId per ATTEMPT, not per order: GestPay rejects duplicates,
+      // and the callback is correlated by this exact string.
+      const shopTransactionId = (params.metadata?.payment_number || params.order_id)
+        .replace(/\//g, "-");
+
       const bodyXml = `
         <shopLogin>${config.shop_login}</shopLogin>
         <uicCode>242</uicCode>
         <amount>${params.amount.toFixed(2)}</amount>
-        <shopTransactionId>${params.order_id}</shopTransactionId>
+        <shopTransactionId>${shopTransactionId}</shopTransactionId>
         <apikey>${config.api_key}</apikey>`;
 
       const response = await soapRequest(
@@ -149,7 +211,7 @@ export const axerveProvider: IPaymentProvider = {
 
       return {
         success: true,
-        provider_payment_id: params.order_id,
+        provider_payment_id: shopTransactionId,
         redirect_url: redirectUrl,
         status: "processing",
       };
@@ -406,13 +468,16 @@ export const axerveProvider: IPaymentProvider = {
   },
 
   parseWebhookEvent(payload: string): WebhookEvent {
-    const data = JSON.parse(payload);
+    // Payload is the JSON-serialized AxerveDecryptedCallback produced by
+    // processAxerveCallback — GestPay itself never sends JSON.
+    const data = JSON.parse(payload) as AxerveDecryptedCallback;
+
     return {
       provider: "axerve",
-      event_type: data.TransactionResult === "OK" ? "payment.completed" : "payment.failed",
-      event_id: data.BankTransactionID || "",
+      event_type: data.transaction_result === "OK" ? "payment.completed" : "payment.failed",
+      event_id: data.bank_transaction_id || data.shop_transaction_id || "",
       timestamp: new Date(),
-      data,
+      data: data as unknown as Record<string, unknown>,
       raw_payload: payload,
     };
   },
