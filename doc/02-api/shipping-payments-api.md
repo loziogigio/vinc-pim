@@ -807,6 +807,26 @@ Each provider has its own config shape stored in `TenantPaymentConfig.providers`
 | Satispay | `key_id`, `enabled` |
 | Scalapay | `api_key`, `environment`, `enabled` |
 
+### Axerve / GestPay callback configuration
+
+GestPay does not sign its notifications — it calls a merchant-configured URL with the encrypted
+result, and only the merchant's credentials can decrypt it. Configure both URLs in the GestPay
+merchant back office (Configurazione → Ambiente → parametri):
+
+- **Server-to-server response URL** (authoritative, updates the order):
+  `https://<cs-host>/api/public/payments/webhooks/axerve?tenant=<tenantId>`
+- **Buyer return URL** (display only):
+  `https://<cs-host>/pay/complete?provider=axerve&tenant=<tenantId>&ref=<payment_number>`
+
+GestPay appends `a=<shopLogin>` and `b=<cryptedString>` to both. The callback is rejected unless
+`a` matches the tenant's configured `shop_login` and `b` decrypts successfully. A successful
+decryption with `TransactionResult=OK` marks the transaction completed and records the payment on
+the order — there is no separate capture call, because the merchant profile settles on GestPay's side.
+
+Use a distinct URL per tenant — the `tenant` query parameter is required and unvalidated callbacks
+are dropped. The `ref` on the return URL is the transaction's `payment_number` with `/` replaced by
+`-` (e.g. `PA-12-2026`), which is the same string sent to GestPay as `shopTransactionId`.
+
 ---
 
 ## Key Source Files
