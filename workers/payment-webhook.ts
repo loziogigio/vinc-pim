@@ -13,7 +13,12 @@ import { Worker, Job } from "bullmq";
 import mongoose from "mongoose";
 import { getPooledConnection } from "../src/lib/db/connection";
 import { getModelRegistry } from "../src/lib/db/model-registry";
-import { capturePayment } from "../src/lib/payments/payment.service";
+import {
+  capturePayment,
+  completeTransactionFromCallback,
+  failTransactionFromCallback,
+} from "../src/lib/payments/payment.service";
+import { extractProviderPaymentId } from "../src/lib/payments/callback-events";
 import { initializeProviders } from "../src/lib/payments/providers/register-providers";
 import { closeAllConnections } from "../src/lib/db/connection-pool";
 import type { WebhookEvent } from "../src/lib/types/payment";
@@ -86,6 +91,36 @@ async function processWebhookJob(job: Job<WebhookJobData>): Promise<{ processed:
     provider_event_id: event.event_id,
   });
 
+  // Axerve/GestPay settles on its side: the decrypted callback is the final word.
+  // The helpers below re-fetch and save the document themselves, so the audit event
+  // pushed above is intentionally discarded — they write their own.
+  if (provider === "axerve") {
+    const data = event.data as Record<string, unknown>;
+
+    if (event.event_type === "payment.completed") {
+      const result = await completeTransactionFromCallback(
+        connection,
+        providerPaymentId,
+        "axerve",
+        {
+          provider_capture_id: (data.bank_transaction_id as string) || undefined,
+          authorization_code: (data.authorization_code as string) || undefined,
+        }
+      );
+      console.log(
+        `[Payment Worker] Axerve ${providerPaymentId} → ${result.success ? "completed" : "error"}`
+      );
+    } else {
+      await failTransactionFromCallback(connection, providerPaymentId, "axerve", {
+        reason: (data.error_description as string) || "GestPay reported KO",
+        code: (data.error_code as string) || undefined,
+      });
+      console.log(`[Payment Worker] Axerve ${providerPaymentId} → failed`);
+    }
+
+    return { processed: true, event_type: event.event_type };
+  }
+
   // Handle capture if needed
   if (shouldCapture(provider, event) && transaction.status === "processing") {
     console.log(`[Payment Worker] Capturing transaction ${transaction.transaction_id}`);
@@ -111,32 +146,6 @@ async function processWebhookJob(job: Job<WebhookJobData>): Promise<{ processed:
 }
 
 /**
- * Extract the provider payment ID from webhook event data.
- */
-function extractProviderPaymentId(provider: string, event: WebhookEvent): string | null {
-  const data = event.data as Record<string, unknown>;
-
-  switch (provider) {
-    case "paypal":
-      // PayPal: resource.id is the order ID
-      return (data.id as string) || null;
-
-    case "stripe":
-      // Stripe: data.object.payment_intent or data.object.id
-      return (data.payment_intent as string) || (data.id as string) || null;
-
-    case "nexi":
-    case "axerve":
-    case "mangopay":
-      // Generic: look for common ID fields
-      return (data.id as string) || (data.transaction_id as string) || null;
-
-    default:
-      return (data.id as string) || null;
-  }
-}
-
-/**
  * Determine if this webhook event should trigger a capture.
  */
 function shouldCapture(provider: string, event: WebhookEvent): boolean {
@@ -149,9 +158,6 @@ function shouldCapture(provider: string, event: WebhookEvent): boolean {
 
     case "nexi":
       return event.event_type === "PAYMENT_COMPLETED";
-
-    case "axerve":
-      return event.event_type === "PAYMENT_OK";
 
     case "mangopay":
       return event.event_type === "PAYIN_NORMAL_SUCCEEDED";

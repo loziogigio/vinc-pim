@@ -444,6 +444,102 @@ export async function capturePayment(
   }
 }
 
+/**
+ * Complete a transaction from an authenticated provider callback.
+ *
+ * Used by gateways that settle on their side (GestPay/Axerve): the callback already
+ * says the money moved, so there is no capture call to make. Idempotent — providers
+ * retry callbacks.
+ */
+export async function completeTransactionFromCallback(
+  tenantDb: mongoose.Connection,
+  providerPaymentId: string,
+  provider: string,
+  details: { provider_capture_id?: string; authorization_code?: string }
+): Promise<{ success: boolean; already_completed?: boolean; error?: string }> {
+  const registry = getModelRegistry(tenantDb);
+  const PaymentTransaction = registry.PaymentTransaction;
+
+  const transaction = await PaymentTransaction.findOne({
+    provider_payment_id: providerPaymentId,
+    provider,
+  });
+
+  if (!transaction) {
+    return { success: false, error: `Transaction not found for ${provider}:${providerPaymentId}` };
+  }
+
+  if (transaction.status === "completed") {
+    transaction.events.push(createEvent("payment.callback_duplicate", "completed", details));
+    await transaction.save();
+    return { success: true, already_completed: true };
+  }
+
+  transaction.status = "completed";
+  transaction.completed_at = new Date();
+  if (details.provider_capture_id) {
+    transaction.provider_capture_id = details.provider_capture_id;
+  }
+  transaction.events.push(createEvent("payment.callback_completed", "completed", details));
+  await transaction.save();
+
+  if (transaction.order_id) {
+    try {
+      await recordGatewayPayment(tenantDb, transaction.order_id, {
+        amount: transaction.gross_amount,
+        provider: transaction.provider,
+        provider_payment_id: transaction.provider_payment_id,
+        provider_capture_id: transaction.provider_capture_id,
+        payment_type: transaction.payment_type,
+        transaction_id: transaction.transaction_id,
+        payment_number: transaction.payment_number,
+      });
+    } catch (err) {
+      // Log but don't fail — the transaction is already completed.
+      console.error(`[Payment] Failed to update order ${transaction.order_id}:`, err);
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Mark a transaction failed from an authenticated provider callback.
+ */
+export async function failTransactionFromCallback(
+  tenantDb: mongoose.Connection,
+  providerPaymentId: string,
+  provider: string,
+  failure: { reason?: string; code?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const registry = getModelRegistry(tenantDb);
+  const PaymentTransaction = registry.PaymentTransaction;
+
+  const transaction = await PaymentTransaction.findOne({
+    provider_payment_id: providerPaymentId,
+    provider,
+  });
+
+  if (!transaction) {
+    return { success: false, error: `Transaction not found for ${provider}:${providerPaymentId}` };
+  }
+
+  // Never downgrade a completed payment.
+  if (transaction.status === "completed") {
+    transaction.events.push(createEvent("payment.callback_late_failure", "completed", failure));
+    await transaction.save();
+    return { success: true };
+  }
+
+  transaction.status = "failed";
+  transaction.failure_reason = failure.reason;
+  transaction.failure_code = failure.code;
+  transaction.events.push(createEvent("payment.callback_failed", "failed", failure));
+  await transaction.save();
+
+  return { success: true };
+}
+
 // ============================================
 // HELPERS
 // ============================================
