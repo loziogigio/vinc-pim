@@ -19,7 +19,8 @@ import { getModelRegistry } from "@/lib/db/model-registry";
 import { convertToQuotation } from "@/lib/services/order-lifecycle.service";
 import { recalculateOrderTotals } from "@/lib/db/models/order";
 import { holdBooking, cancelBooking } from "@/lib/services/booking.service";
-import { getOCApiForTenant } from "@/lib/oc-api/client";
+import { getOCApiForTenant, OCApiError } from "@/lib/oc-api/client";
+import type { OCOrder, OCPassenger } from "@/lib/oc-api/types";
 
 // ============================================
 // INPUT TYPES
@@ -384,6 +385,178 @@ export async function getResourceQuotationByToken(
   }
 
   return { success: true, data: toCustomerSafeQuotation(order) };
+}
+
+// ============================================
+// BOOK MSC OPTION (quote → book with option_only=true)
+// ============================================
+
+export interface OptionResult {
+  booking_no: string;
+  order_uuid: string;
+  cabin_no: string | null;
+  status: number;
+}
+
+/**
+ * Turn an existing quotation's cruise line into a real MSC cabin OPTION by
+ * calling the OC gateway: createQuote → bookOption(option_only=true).
+ *
+ * cabin_type_id/price_type_id resolution:
+ *   1. Preferred: read directly off the line's quote_snapshot, if a future
+ *      caller ever stores them there.
+ *   2. Fallback (current reality — quote_snapshot only stores the cabin
+ *      category CODE, e.g. "IB"): call the OC public catalog detail
+ *      endpoint GET /api/v1/catalog/cruises/{oc_cruise_id} and match
+ *      prices[].cabin_type.code against the stored cabin_category. The
+ *      first matching price entry's cabin_type_id/price_type_id is used —
+ *      this does not disambiguate multiple price_type entries for the same
+ *      cabin category (e.g. different occupancy fares).
+ *
+ * On success, persists msc_booking_no / OC order uuid / cabin_no / status
+ * onto the line's quote_snapshot.option. On an OC "fake success" (offline
+ * order, non-30 status, or missing msc_booking_no) nothing is persisted and
+ * the raw OC order payload is returned via `ocPayload` for the caller to
+ * surface as a 502.
+ */
+export async function createResourceQuotationOption(
+  tenantDb: mongoose.Connection,
+  tenantId: string,
+  token: string,
+  passengers: OCPassenger[]
+): Promise<ServiceResult<OptionResult> & { ocPayload?: OCOrder }> {
+  const registry = getModelRegistry(tenantDb);
+  const Order = registry.Order;
+
+  const order = await Order.findOne({ public_token: token });
+  if (!order) {
+    return { success: false, error: "Quotation not found", status: 404 };
+  }
+
+  // Find the cruise line to option — the first external line carrying an
+  // OC cruise reference in its quote_snapshot.
+  const item = order.items.find((it) => {
+    const snap = it.quote_snapshot as Record<string, unknown> | undefined;
+    return !!snap && typeof snap.oc_cruise_id === "number";
+  });
+  if (!item) {
+    return { success: false, error: "Quotation has no cruise line to option", status: 400 };
+  }
+
+  const snap = { ...(item.quote_snapshot as Record<string, unknown>) };
+  const ocCruiseId = snap.oc_cruise_id as number;
+  const cabinCategoryCode = snap.cabin_category as string | undefined;
+  const occupancy = (snap.occupancy as Record<string, unknown>) || {};
+  const numAdults = typeof occupancy.adults === "number" ? occupancy.adults : 2;
+  const numChildren = typeof occupancy.children === "number" ? occupancy.children : 0;
+
+  const oc = getOCApiForTenant(tenantId);
+
+  // Resolve cabin_type_id / price_type_id
+  let cabinTypeId = typeof snap.cabin_type_id === "number" ? snap.cabin_type_id : undefined;
+  let priceTypeId = typeof snap.price_type_id === "number" ? snap.price_type_id : undefined;
+
+  if (!cabinTypeId || !priceTypeId) {
+    if (!cabinCategoryCode) {
+      return {
+        success: false,
+        error: "Quotation snapshot has no cabin_category to resolve cabin_type_id/price_type_id from",
+        status: 400,
+      };
+    }
+    try {
+      const catalogCruise = await oc.getCatalogCruise(ocCruiseId);
+      const match = (catalogCruise.prices || []).find(
+        (p) => p.cabin_type?.code === cabinCategoryCode
+      );
+      if (!match) {
+        return {
+          success: false,
+          error: `No OC catalog price entry found for cabin category '${cabinCategoryCode}'`,
+          status: 422,
+        };
+      }
+      cabinTypeId = match.cabin_type_id;
+      priceTypeId = match.price_type_id;
+    } catch (err) {
+      return {
+        success: false,
+        error:
+          err instanceof OCApiError
+            ? `OC catalog lookup failed: ${err.detail}`
+            : "OC catalog lookup failed",
+        status: err instanceof OCApiError ? err.status : 502,
+      };
+    }
+  }
+
+  // Create the OC quote
+  let quote: { uuid: string; pratica: number };
+  try {
+    quote = await oc.createQuote({
+      cruise_id: ocCruiseId,
+      cabin_type_id: cabinTypeId!,
+      price_type_id: priceTypeId!,
+      num_adults: numAdults,
+      num_children: numChildren,
+    });
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof OCApiError ? `OC quote creation failed: ${err.detail}` : "OC quote creation failed",
+      status: err instanceof OCApiError ? err.status : 502,
+    };
+  }
+
+  // Book the option (option_only=true — guarantee cabin, no cabin selection)
+  let ocOrder: OCOrder;
+  try {
+    ocOrder = await oc.bookOption(quote.uuid, passengers);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof OCApiError ? `OC booking failed: ${err.detail}` : "OC booking failed",
+      status: err instanceof OCApiError ? err.status : 502,
+    };
+  }
+
+  // Reject fake success — an offline/non-confirmed order means the MSC call
+  // failed upstream. Do not persist anything as if it succeeded.
+  const mscBookingNo = ocOrder.msc_booking_no;
+  if (ocOrder.offline === true || ocOrder.status !== 30 || !mscBookingNo) {
+    return {
+      success: false,
+      error: "MSC option booking did not confirm (offline or non-confirmed status)",
+      status: 502,
+      ocPayload: ocOrder,
+    };
+  }
+
+  // Persist onto the quotation line
+  item.quote_snapshot = {
+    ...snap,
+    option: {
+      quote_uuid: quote.uuid,
+      pratica: quote.pratica,
+      order_uuid: ocOrder.uuid,
+      msc_booking_no: mscBookingNo,
+      cabin_no: ocOrder.cabin_no,
+      status: ocOrder.status,
+      booked_at: new Date().toISOString(),
+    },
+  };
+  order.markModified("items");
+  await order.save();
+
+  return {
+    success: true,
+    data: {
+      booking_no: mscBookingNo,
+      order_uuid: ocOrder.uuid,
+      cabin_no: ocOrder.cabin_no,
+      status: ocOrder.status,
+    },
+  };
 }
 
 // ============================================
