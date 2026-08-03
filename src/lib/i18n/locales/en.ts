@@ -644,7 +644,7 @@ const en = {
         createSuccess: "Category created successfully",
         updateSuccess: "Category updated successfully",
         saveFailed: "Failed to save category",
-        deleteConfirm: "Are you sure you want to delete \"{{name}}\"?",
+        deleteConfirm: "Permanently delete \"{{name}}\"? This cannot be undone.",
         deleteSuccess: "Category deleted successfully",
         deleteFailed: "Failed to delete category",
         hasProductsError: "Cannot delete category with {{count}} products. Please reassign them first.",

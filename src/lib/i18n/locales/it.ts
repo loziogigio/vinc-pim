@@ -645,7 +645,7 @@ const it = {
         createSuccess: "Categoria creata con successo",
         updateSuccess: "Categoria aggiornata con successo",
         saveFailed: "Impossibile salvare la categoria",
-        deleteConfirm: "Sei sicuro di voler eliminare \"{{name}}\"?",
+        deleteConfirm: "Eliminare definitivamente \"{{name}}\"? L'operazione non è reversibile.",
         deleteSuccess: "Categoria eliminata con successo",
         deleteFailed: "Impossibile eliminare la categoria",
         hasProductsError: "Impossibile eliminare una categoria con {{count}} prodotti. Riassegnali prima.",

@@ -196,7 +196,8 @@ export async function PATCH(
 
 /**
  * DELETE /api/b2b/pim/categories/[id]
- * Soft delete a category
+ * Permanently delete a category. Only allowed when nothing references it:
+ * no current products and no child categories (inactive children count too).
  */
 export async function DELETE(
   req: NextRequest,
@@ -211,9 +212,14 @@ export async function DELETE(
     const { id } = await params;
 
     const [productCount, childCount] = await Promise.all([
+      // Deletion is permanent, so count per-channel assignments too - a product
+      // referenced only through channel_categories must not be orphaned.
       PIMProductModel.countDocuments({
         isCurrent: true,
-        "category.category_id": id,
+        $or: [
+          { "category.category_id": id },
+          { "channel_categories.category.category_id": id },
+        ],
       }),
       CategoryModel.countDocuments({
         parent_id: id,
@@ -238,11 +244,9 @@ export async function DELETE(
       );
     }
 
-    const category = await CategoryModel.findOneAndUpdate(
-      { category_id: id }, // No wholesaler_id - database provides isolation
-      { is_active: false, updated_at: new Date() },
-      { new: true }
-    );
+    const category = await CategoryModel.findOneAndDelete({
+      category_id: id, // No wholesaler_id - database provides isolation
+    });
 
     if (!category) {
       return NextResponse.json(

@@ -645,7 +645,7 @@ const sk = {
         createSuccess: "Kateg\u00f3ria bola \u00faspe\u0161ne vytoren\u00e1",
         updateSuccess: "Kateg\u00f3ria bola \u00faspe\u0161ne aktualizovan\u00e1",
         saveFailed: "Nepodarilo sa ulo\u017ei\u0165 kateg\u00f3riu",
-        deleteConfirm: "Naozaj chcete odstr\u00e1ni\u0165 \"{{name}}\"?",
+        deleteConfirm: "Natrvalo odstr\u00e1ni\u0165 \"{{name}}\"? T\u00fato oper\u00e1ciu nie je mo\u017en\u00e9 vr\u00e1ti\u0165 sp\u00e4\u0165.",
         deleteSuccess: "Kateg\u00f3ria bola \u00faspe\u0161ne odstr\u00e1nen\u00e1",
         deleteFailed: "Nepodarilo sa odstr\u00e1ni\u0165 kateg\u00f3riu",
         hasProductsError: "Nie je mo\u017en\u00e9 odstr\u00e1ni\u0165 kateg\u00f3riu s {{count}} produktmi. Najprv ich prira\u010fte inde.",
