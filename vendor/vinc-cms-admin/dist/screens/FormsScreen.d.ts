@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import type { CmsAdminError } from "../client.js";
 export type FormsTab = "submissions" | "definitions";
 /**
  * Forms screen: thin tab shell over the submissions inbox and form-definitions list.
@@ -10,9 +11,12 @@ export type FormsTab = "submissions" | "definitions";
  *
  * @remarks The adapter passed to CmsAdminProvider must be memoized.
  */
-export declare function FormsScreen({ tab, onTabChange, storefrontLabel, }: {
+export interface FormsScreenProps {
     tab: FormsTab;
     onTabChange?: (tab: FormsTab) => void;
     storefrontLabel?: string;
-}): JSX.Element;
+    /** Forwarded to SubmissionsInbox — see SubmissionsInboxProps. */
+    onWriteError?: (err: CmsAdminError) => boolean;
+}
+export declare function FormsScreen({ tab, onTabChange, storefrontLabel, onWriteError, }: FormsScreenProps): JSX.Element;
 //# sourceMappingURL=FormsScreen.d.ts.map

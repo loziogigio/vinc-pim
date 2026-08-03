@@ -2,13 +2,22 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CmsAdminClient = exports.CmsAdminError = void 0;
 class CmsAdminError extends Error {
-    constructor(status, message) {
+    constructor(status, message, code, details) {
         super(message);
         this.name = 'CmsAdminError';
         this.status = status;
+        this.code = code;
+        this.details = details;
     }
 }
 exports.CmsAdminError = CmsAdminError;
+/** Builds a CmsAdminError from a non-OK response, preserving `code` and any
+ *  extra body fields (`total`, `max`, …) as `details`. */
+async function toCmsAdminError(res) {
+    const body = (await res.json().catch(() => ({})));
+    const { error, code, ...details } = body;
+    return new CmsAdminError(res.status, error || `HTTP ${res.status}`, code, details);
+}
 class CmsAdminClient {
     constructor(cfg) {
         this.apiBase = cfg.apiBase;
@@ -27,8 +36,7 @@ class CmsAdminClient {
         };
         const res = await fetch(`${this.apiBase}${path}`, init);
         if (!res.ok) {
-            const errBody = (await res.json().catch(() => ({})));
-            throw new CmsAdminError(res.status, errBody.error || `HTTP ${res.status}`);
+            throw await toCmsAdminError(res);
         }
         return res.json();
     }
@@ -109,9 +117,35 @@ class CmsAdminClient {
             query.set('form_type', params.form_type);
         if (params?.ip)
             query.set('ip', params.ip);
+        if (params?.page_slug)
+            query.set('page_slug', params.page_slug);
+        if (params?.email)
+            query.set('email', params.email);
+        if (params?.seen)
+            query.set('seen', params.seen);
+        if (params?.date_from)
+            query.set('date_from', params.date_from);
+        if (params?.date_to)
+            query.set('date_to', params.date_to);
         const qs = query.toString();
         const envelope = await this.request('GET', `/forms${qs ? `?${qs}` : ''}`);
         return envelope.data;
+    }
+    /** POSTs an export request and resolves the CSV blob. Cannot use `request`,
+     *  which always parses JSON. */
+    async exportSubmissions(body) {
+        const headers = new Headers(this.fetchInit?.headers);
+        headers.set('Content-Type', 'application/json');
+        const res = await fetch(`${this.apiBase}/forms/export`, {
+            ...this.fetchInit,
+            method: 'POST',
+            cache: 'no-store',
+            headers,
+            body: JSON.stringify(body),
+        });
+        if (!res.ok)
+            throw await toCmsAdminError(res);
+        return res.blob();
     }
     async getSubmission(id) {
         const envelope = await this.request('GET', `/forms/${id}`);

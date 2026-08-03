@@ -39,7 +39,12 @@ export interface CmsAdminClientConfig {
 }
 export declare class CmsAdminError extends Error {
     status: number;
-    constructor(status: number, message: string);
+    /** Machine-readable error code from the server body, e.g. "NOT_MIGRATED",
+     *  "EXPORT_TOO_LARGE". Hosts branch on this instead of parsing messages. */
+    code?: string;
+    /** Remaining fields from the error body (e.g. { total, max }). */
+    details?: Record<string, unknown>;
+    constructor(status: number, message: string, code?: string, details?: Record<string, unknown>);
 }
 /** Storefront record shape returned by GET/PATCH {apiBase} — the settings screen
  *  only ever reads/writes meta_tags/custom_scripts/custom_css from it, but the
@@ -61,7 +66,10 @@ export interface Pagination {
 }
 export interface FormSubmissionRecord {
     _id: string;
-    storefront_slug: string;
+    /** Present on B2C storefront submissions. */
+    storefront_slug?: string;
+    /** Present on B2B portal submissions. */
+    portal_slug?: string;
     page_slug?: string;
     form_block_id?: string;
     form_type?: 'page_form' | 'standalone';
@@ -155,10 +163,23 @@ export declare class CmsAdminClient {
         limit?: number;
         form_type?: string;
         ip?: string;
+        page_slug?: string;
+        email?: string;
+        seen?: 'seen' | 'unseen';
+        date_from?: string;
+        date_to?: string;
     }): Promise<{
         items: FormSubmissionRecord[];
         pagination: Pagination;
     }>;
+    /** POSTs an export request and resolves the CSV blob. Cannot use `request`,
+     *  which always parses JSON. */
+    exportSubmissions(body: {
+        submission_ids?: string[];
+        all_matching?: boolean;
+        filters?: Record<string, unknown>;
+        delimiter?: 'comma' | 'semicolon';
+    }): Promise<Blob>;
     getSubmission(id: string): Promise<FormSubmissionRecord>;
     setSubmissionSeen(id: string, seen: boolean): Promise<FormSubmissionRecord>;
     deleteSubmission(id: string): Promise<void>;
