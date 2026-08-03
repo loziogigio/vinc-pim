@@ -529,3 +529,67 @@ describe("DELETE /api/b2b/b2b/portals/[slug]/forms/[id]", () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ============================================
+// GET /api/b2b/b2b/portals/[slug]/forms — server-side filters
+// ============================================
+
+describe("GET forms — server-side filters", () => {
+  beforeEach(async () => {
+    const { B2BFormSubmission } = await connectWithModels(TEST_DB);
+    await B2BFormSubmission.deleteMany({});
+    await B2BFormSubmission.create([
+      {
+        portal_slug: PORTAL_SLUG,
+        page_slug: "contatti",
+        submitter_email: "ada@example.com",
+        seen: false,
+        data: {},
+        created_at: new Date("2026-02-01T10:00:00.000Z"),
+      },
+      {
+        portal_slug: PORTAL_SLUG,
+        page_slug: "home",
+        submitter_email: "bob@example.com",
+        seen: true,
+        data: {},
+        created_at: new Date("2026-03-01T10:00:00.000Z"),
+      },
+    ]);
+  });
+
+  const list = async (query: string) => {
+    const req = buildAuthedRequest(
+      "GET",
+      `/api/b2b/b2b/portals/${PORTAL_SLUG}/forms?${query}`,
+      TEST_TENANT
+    );
+    const res = await listFormsRoute(req, listCtx);
+    return (await res.json()).data;
+  };
+
+  it("filters by email substring", async () => {
+    const data = await list("email=ada");
+    expect(data.pagination.total).toBe(1);
+    expect(data.items[0].submitter_email).toBe("ada@example.com");
+  });
+
+  it("filters by seen state", async () => {
+    expect((await list("seen=unseen")).pagination.total).toBe(1);
+    expect((await list("seen=seen")).pagination.total).toBe(1);
+  });
+
+  it("filters by UTC date range", async () => {
+    const data = await list("date_from=2026-02-25&date_to=2026-03-05");
+    expect(data.pagination.total).toBe(1);
+    expect(data.items[0].page_slug).toBe("home");
+  });
+
+  it("matches page_slug as a substring, not exactly", async () => {
+    expect((await list("page_slug=cont")).pagination.total).toBe(1);
+  });
+
+  it("returns everything when no filters are given", async () => {
+    expect((await list("")).pagination.total).toBe(2);
+  });
+});
