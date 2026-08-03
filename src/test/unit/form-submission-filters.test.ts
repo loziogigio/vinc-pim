@@ -50,6 +50,22 @@ describe("parseSubmissionFilters", () => {
   it("ignores malformed dates", () => {
     expect(parseSubmissionFilters({ date_from: "01/02/2026", date_to: "2026-13-45" })).toEqual({});
   });
+
+  it("rejects dates with day overflow (Feb 30)", () => {
+    expect(parseSubmissionFilters({ date_from: "2026-02-30" })).toEqual({});
+  });
+
+  it("rejects dates with day overflow (Apr 31)", () => {
+    expect(parseSubmissionFilters({ date_to: "2026-04-31" })).toEqual({});
+  });
+
+  it("rejects non-leap-year Feb 29", () => {
+    expect(parseSubmissionFilters({ date_from: "2026-02-29" })).toEqual({});
+  });
+
+  it("accepts valid leap-year Feb 29", () => {
+    expect(parseSubmissionFilters({ date_from: "2024-02-29" })).toEqual({ date_from: "2024-02-29" });
+  });
 });
 
 describe("buildSubmissionQuery", () => {

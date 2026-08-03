@@ -48,7 +48,7 @@ function readTrimmed(
   return trimmed === "" ? undefined : trimmed;
 }
 
-/** Valid only if it is a real calendar date — "2026-13-45" parses to Invalid Date. */
+/** Valid only if it is a real calendar date — rejects dates with day overflow (e.g., Feb 30, Apr 31, non-leap-year Feb 29). */
 function readIsoDate(
   source: URLSearchParams | Record<string, unknown>,
   key: string
@@ -56,7 +56,10 @@ function readIsoDate(
   const value = readTrimmed(source, key);
   if (!value || !ISO_DATE.test(value)) return undefined;
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(parsed.getTime()) ? undefined : value;
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  // Round-trip: convert back to YYYY-MM-DD and verify it matches the input
+  const roundTrip = parsed.toISOString().slice(0, 10);
+  return roundTrip === value ? value : undefined;
 }
 
 function readSeen(
