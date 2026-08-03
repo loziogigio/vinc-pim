@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   parseSubmissionFilters,
   buildSubmissionQuery,
+  buildSubmissionCsvColumns,
+  toSubmissionCsvRow,
+  type SubmissionCsvLabels,
 } from "@/lib/services/form-submission.service";
 
 describe("parseSubmissionFilters", () => {
@@ -121,5 +124,168 @@ describe("buildSubmissionQuery", () => {
 
   it("omits created_at entirely when no dates are given", () => {
     expect(buildSubmissionQuery("storefront_slug", "demo", {}).created_at).toBeUndefined();
+  });
+});
+
+const LABELS: SubmissionCsvLabels = {
+  submitted_at: "Submitted",
+  form: "Form",
+  form_type: "Type",
+  page_slug: "Page",
+  submitter_email: "Email",
+  ip_address: "IP",
+  seen: "Seen",
+  yes: "Yes",
+  no: "No",
+  page_form: "Page Form",
+  standalone: "Standalone",
+};
+
+const META_KEYS = [
+  "submitted_at",
+  "form",
+  "form_type",
+  "page_slug",
+  "submitter_email",
+  "ip_address",
+  "seen",
+];
+
+describe("buildSubmissionCsvColumns", () => {
+  it("emits the seven meta columns first, with translated headers", () => {
+    const columns = buildSubmissionCsvColumns([], [], LABELS);
+    expect(columns.map((c) => c.key)).toEqual(META_KEYS);
+    expect(columns[0].header).toBe("Submitted");
+    expect(columns[6].header).toBe("Seen");
+  });
+
+  it("orders data columns by the definition's field order and uses field labels", () => {
+    const submissions = [
+      { form_definition_slug: "contact", data: { message: "hi", full_name: "Ada" } },
+    ];
+    const definitions = [
+      {
+        slug: "contact",
+        config: {
+          fields: [
+            { id: "full_name", label: "Full name" },
+            { id: "message", label: "Message" },
+          ],
+        },
+      },
+    ];
+    const columns = buildSubmissionCsvColumns(submissions, definitions, LABELS);
+    expect(columns.slice(7).map((c) => c.key)).toEqual(["data.full_name", "data.message"]);
+    expect(columns.slice(7).map((c) => c.header)).toEqual(["Full name", "Message"]);
+  });
+
+  it("appends keys with no matching field alphabetically, humanising the header", () => {
+    const submissions = [{ data: { zeta: 1, alpha_key: 2 } }];
+    const columns = buildSubmissionCsvColumns(submissions, [], LABELS);
+    expect(columns.slice(7).map((c) => c.key)).toEqual(["data.alpha_key", "data.zeta"]);
+    expect(columns[7].header).toBe("alpha key");
+  });
+
+  it("unions keys across submissions from different forms, definitions first", () => {
+    const submissions = [
+      { form_definition_slug: "contact", data: { email: "a@b.c" } },
+      { form_definition_slug: "demo", data: { company: "Acme" } },
+      { data: { loose: true } },
+    ];
+    const definitions = [
+      { slug: "demo", config: { fields: [{ id: "company", label: "Company" }] } },
+      { slug: "contact", config: { fields: [{ id: "email", label: "Email address" }] } },
+    ];
+    const columns = buildSubmissionCsvColumns(submissions, definitions, LABELS);
+    // definitions sorted by slug: contact then demo; then leftovers alphabetically
+    expect(columns.slice(7).map((c) => c.key)).toEqual([
+      "data.email",
+      "data.company",
+      "data.loose",
+    ]);
+  });
+
+  it("never emits a duplicate column when two forms share a field id", () => {
+    const submissions = [
+      { form_definition_slug: "a", data: { email: "x" } },
+      { form_definition_slug: "b", data: { email: "y" } },
+    ];
+    const definitions = [
+      { slug: "a", config: { fields: [{ id: "email", label: "Email A" }] } },
+      { slug: "b", config: { fields: [{ id: "email", label: "Email B" }] } },
+    ];
+    const columns = buildSubmissionCsvColumns(submissions, definitions, LABELS);
+    const dataColumns = columns.slice(7);
+    expect(dataColumns).toHaveLength(1);
+    expect(dataColumns[0].header).toBe("Email A");
+  });
+
+  it("omits definition fields that no exported submission actually used", () => {
+    const submissions = [{ form_definition_slug: "contact", data: { email: "a@b.c" } }];
+    const definitions = [
+      {
+        slug: "contact",
+        config: { fields: [{ id: "email", label: "Email" }, { id: "phone", label: "Phone" }] },
+      },
+    ];
+    const columns = buildSubmissionCsvColumns(submissions, definitions, LABELS);
+    expect(columns.slice(7).map((c) => c.key)).toEqual(["data.email"]);
+  });
+});
+
+describe("toSubmissionCsvRow", () => {
+  const columns = buildSubmissionCsvColumns(
+    [{ form_definition_slug: "contact", data: { email: "a@b.c" } }],
+    [{ slug: "contact", config: { fields: [{ id: "email", label: "Email" }] } }],
+    LABELS
+  );
+
+  it("renders created_at as an ISO-8601 UTC string", () => {
+    const row = toSubmissionCsvRow(
+      { created_at: new Date("2026-02-03T10:11:12.000Z") },
+      columns,
+      LABELS
+    );
+    expect(row.submitted_at).toBe("2026-02-03T10:11:12.000Z");
+  });
+
+  it("uses the definition slug as the form for standalone submissions", () => {
+    const row = toSubmissionCsvRow(
+      { form_type: "standalone", form_definition_slug: "demo_request", page_slug: "home" },
+      columns,
+      LABELS
+    );
+    expect(row.form).toBe("demo_request");
+    expect(row.form_type).toBe("Standalone");
+  });
+
+  it("falls back to the page slug as the form for page submissions", () => {
+    const row = toSubmissionCsvRow(
+      { form_type: "page_form", page_slug: "contatti" },
+      columns,
+      LABELS
+    );
+    expect(row.form).toBe("contatti");
+    expect(row.form_type).toBe("Page Form");
+    expect(row.page_slug).toBe("contatti");
+  });
+
+  it("localises seen as yes/no", () => {
+    expect(toSubmissionCsvRow({ seen: true }, columns, LABELS).seen).toBe("Yes");
+    expect(toSubmissionCsvRow({ seen: false }, columns, LABELS).seen).toBe("No");
+  });
+
+  it("flattens data values under their data.* column keys", () => {
+    const row = toSubmissionCsvRow({ data: { email: "a@b.c" } }, columns, LABELS);
+    expect(row["data.email"]).toBe("a@b.c");
+  });
+
+  it("leaves foreign data columns undefined rather than throwing", () => {
+    const row = toSubmissionCsvRow({ data: {} }, columns, LABELS);
+    expect(row["data.email"]).toBeUndefined();
+  });
+
+  it("survives a submission with no data at all", () => {
+    expect(() => toSubmissionCsvRow({}, columns, LABELS)).not.toThrow();
   });
 });

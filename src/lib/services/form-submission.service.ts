@@ -1,4 +1,5 @@
 import { safeRegexQuery } from "@/lib/security";
+import type { CsvColumn } from "@/lib/utils/csv";
 
 /**
  * Shared query construction for form submissions, used by the b2c and b2b list
@@ -137,4 +138,144 @@ export function buildSubmissionQuery(
   }
 
   return query;
+}
+
+/** Column-key prefix for dynamic answer fields, keeping them from colliding with
+ *  the fixed meta keys (a form field literally named "seen" is legal). */
+const DATA_PREFIX = "data.";
+
+/** Fixed meta columns, in emitted order. */
+const META_COLUMN_KEYS = [
+  "submitted_at",
+  "form",
+  "form_type",
+  "page_slug",
+  "submitter_email",
+  "ip_address",
+  "seen",
+] as const;
+
+export interface SubmissionCsvLabels {
+  submitted_at: string;
+  form: string;
+  form_type: string;
+  page_slug: string;
+  submitter_email: string;
+  ip_address: string;
+  seen: string;
+  yes: string;
+  no: string;
+  page_form: string;
+  standalone: string;
+}
+
+/** Minimal shape the exporter needs from a lean submission document. */
+export interface ExportSubmission {
+  page_slug?: string;
+  form_type?: string;
+  form_definition_slug?: string;
+  data?: Record<string, unknown>;
+  submitter_email?: string;
+  ip_address?: string;
+  seen?: boolean;
+  created_at?: Date | string;
+}
+
+/** Minimal shape the exporter needs from a lean form-definition document. */
+export interface ExportDefinition {
+  slug: string;
+  config?: { fields?: Array<{ id: string; label?: string }> };
+}
+
+function humanise(key: string): string {
+  return key.replace(/_/g, " ");
+}
+
+/**
+ * Builds the column list: seven fixed meta columns, then one column per distinct
+ * `data` key present in the exported set.
+ *
+ * Data columns are ordered by walking the form definitions (sorted by slug) in
+ * their declared field order, which keeps related answers adjacent; any key with
+ * no matching field is appended alphabetically. Only keys some submission
+ * actually used are emitted, so an unused optional field never becomes an empty
+ * column. The result is deterministic — two exports of the same rows produce
+ * byte-identical files.
+ */
+export function buildSubmissionCsvColumns(
+  submissions: ExportSubmission[],
+  definitions: ExportDefinition[],
+  labels: SubmissionCsvLabels
+): CsvColumn[] {
+  const columns: CsvColumn[] = META_COLUMN_KEYS.map((key) => ({
+    key,
+    header: labels[key],
+  }));
+
+  const usedKeys = new Set<string>();
+  for (const submission of submissions) {
+    for (const key of Object.keys(submission.data ?? {})) usedKeys.add(key);
+  }
+
+  const seen = new Set<string>();
+  const sortedDefinitions = [...definitions].sort((a, b) => a.slug.localeCompare(b.slug));
+
+  for (const definition of sortedDefinitions) {
+    for (const field of definition.config?.fields ?? []) {
+      if (!usedKeys.has(field.id) || seen.has(field.id)) continue;
+      seen.add(field.id);
+      columns.push({
+        key: `${DATA_PREFIX}${field.id}`,
+        header: field.label || humanise(field.id),
+      });
+    }
+  }
+
+  const leftovers = [...usedKeys].filter((key) => !seen.has(key)).sort();
+  for (const key of leftovers) {
+    columns.push({ key: `${DATA_PREFIX}${key}`, header: humanise(key) });
+  }
+
+  return columns;
+}
+
+function toIsoString(value: Date | string | undefined): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+}
+
+/** Mirrors the inbox's getSourceLabel: standalone submissions are identified by
+ *  their definition slug, page forms by the page they sit on. */
+function sourceLabel(submission: ExportSubmission): string {
+  if (submission.form_type === "standalone" && submission.form_definition_slug) {
+    return submission.form_definition_slug;
+  }
+  return submission.page_slug ?? "";
+}
+
+export function toSubmissionCsvRow(
+  submission: ExportSubmission,
+  columns: CsvColumn[],
+  labels: SubmissionCsvLabels
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    submitted_at: toIsoString(submission.created_at),
+    form: sourceLabel(submission),
+    form_type:
+      submission.form_type === "standalone" ? labels.standalone : labels.page_form,
+    page_slug: submission.page_slug ?? "",
+    submitter_email: submission.submitter_email ?? "",
+    ip_address: submission.ip_address ?? "",
+    seen: submission.seen ? labels.yes : labels.no,
+  };
+
+  const data = submission.data ?? {};
+  for (const column of columns) {
+    if (!column.key.startsWith(DATA_PREFIX)) continue;
+    const fieldId = column.key.slice(DATA_PREFIX.length);
+    if (fieldId in data) row[column.key] = data[fieldId];
+  }
+
+  return row;
 }
