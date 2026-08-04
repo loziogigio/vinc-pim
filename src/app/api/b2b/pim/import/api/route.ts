@@ -20,6 +20,7 @@ import {
   checkAutoPublishEligibility,
   mergeWithLockedFields,
 } from "@/lib/pim/auto-publish";
+import { resolveImportStatus, requiresStatusWrite } from "@/lib/pim/import-status";
 import { projectConfig, MULTILINGUAL_FIELDS } from "@/config/project.config";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { autoProvisionCatalogEntities, resolveChannelCategoriesByExternalCode } from "@/lib/services/pim-catalog-autoprovision.service";
@@ -163,6 +164,12 @@ function deepMerge(target: any, source: any): any {
  * merge_mode options:
  * - "replace" (default): New data replaces existing product entirely
  * - "partial": New data is merged with existing product (delta updates)
+ *
+ * status:
+ * A product may carry an explicit "status" ("draft" | "published" | "archived").
+ * It wins over the source's auto-publish gate, which only decides for payloads that
+ * state no status — so a sync can unpublish, not just publish. A status-only change
+ * is written even though the content hash (which ignores status) is unchanged.
  */
 export async function POST(req: NextRequest) {
   // Held for the lifetime of the request; released in the finally below so a
@@ -481,11 +488,24 @@ export async function POST(req: NextRequest) {
           source
         );
 
-        // Determine initial status
-        const status = autoPublishResult.eligible ? "published" : "draft";
-        const published_at = autoPublishResult.eligible ? new Date() : undefined;
+        // Determine status: an explicit status in the payload wins, auto-publish
+        // only decides when the caller stated none. Without this a source with
+        // auto_publish_enabled can publish but can never unpublish.
+        const resolvedStatus = resolveImportStatus({
+          requestedStatus: (finalProductData as any).status,
+          autoPublishEligible: autoPublishResult.eligible,
+          autoPublishReason: autoPublishResult.reason,
+        });
+        const status = resolvedStatus.status;
+        const published_at = resolvedStatus.isPublished ? new Date() : undefined;
 
-        if (autoPublishResult.eligible) {
+        if (resolvedStatus.ignoredStatus !== undefined) {
+          console.warn(
+            `⚠️ Ignoring unknown status "${resolvedStatus.ignoredStatus}" for ${entity_code} — falling back to auto-publish`
+          );
+        }
+
+        if (resolvedStatus.autoPublished) {
           autoPublished++;
         }
 
@@ -504,8 +524,17 @@ export async function POST(req: NextRequest) {
 
         // Skip unchanged: if the current version's content is byte-identical to this
         // payload, do nothing — no flip, no new version, no in-place write, no re-sync.
+        // Exception: the hash ignores `status` by design, so a payload that explicitly
+        // asks for a different status must still be written (otherwise an archive whose
+        // other fields already landed could never take effect).
         const incomingHash = contentHash(finalProductData as any);
-        if (latestProduct && latestProduct.content_hash && latestProduct.content_hash === incomingHash) {
+        const statusWriteRequired = requiresStatusWrite(resolvedStatus, latestProduct?.status);
+        if (
+          latestProduct &&
+          latestProduct.content_hash &&
+          latestProduct.content_hash === incomingHash &&
+          !statusWriteRequired
+        ) {
           unchanged++;
           continue;
         }
@@ -522,7 +551,7 @@ export async function POST(req: NextRequest) {
           completeness_score: completenessScore,
           critical_issues: criticalIssues,
           auto_publish_eligible: autoPublishResult.eligible,
-          auto_publish_reason: autoPublishResult.reason,
+          auto_publish_reason: resolvedStatus.reason,
         };
         const freshAnalytics = { views_30d: 0, clicks_30d: 0, add_to_cart_30d: 0, conversions_30d: 0, priority_score: 0 };
 
@@ -530,7 +559,7 @@ export async function POST(req: NextRequest) {
           // Brand-new product → version 1 (both history modes).
           await PIMProductModel.create({
             ...docFields, version: 1, isCurrent: true,
-            isCurrentPublished: autoPublishResult.eligible, analytics: freshAnalytics,
+            isCurrentPublished: resolvedStatus.isPublished, analytics: freshAnalytics,
           });
         } else if (pimVersioningEnabled) {
           // History ON: retire the old current, insert a new version (later capped).
@@ -540,14 +569,14 @@ export async function POST(req: NextRequest) {
           );
           await PIMProductModel.create({
             ...docFields, version: newVersion, isCurrent: true,
-            isCurrentPublished: autoPublishResult.eligible, analytics: freshAnalytics,
+            isCurrentPublished: resolvedStatus.isPublished, analytics: freshAnalytics,
           });
         } else {
           // History OFF: update the current product in place — no new version,
           // preserves accumulated analytics.
           await PIMProductModel.updateOne(
             { entity_code, isCurrent: true },
-            { $set: { ...docFields, isCurrentPublished: autoPublishResult.eligible, updated_at: new Date() } }
+            { $set: { ...docFields, isCurrentPublished: resolvedStatus.isPublished, updated_at: new Date() } }
           );
         }
 
